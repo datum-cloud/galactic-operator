@@ -8,4 +8,14 @@ layout:
 - go.kubebuilder.io/v4
 projectName: galactic-operator
 repo: github.com/datum-cloud/galactic-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: datumapis.com
+  group: galactic
+  kind: VPC
+  path: github.com/datum-cloud/galactic-operator/api/v1alpha
+  version: v1alpha
 version: "3"
