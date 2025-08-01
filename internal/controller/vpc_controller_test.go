@@ -1,23 +1,8 @@
-/*
-Copyright 2025.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package controller
 
 import (
 	"context"
+	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -28,57 +13,85 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	galacticv1alpha "github.com/datum-cloud/galactic-operator/api/v1alpha"
+	"github.com/datum-cloud/galactic-operator/internal/identifier"
 )
 
 var _ = Describe("VPC Controller", func() {
-	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
+	// Set fixed seed and expected identifiers
+	identifier.Seed(424242)
+	result_identifiers := []string{
+		"f5b6726c782b",
+		"f68a7a2a17d9",
+		"ecfd7bca4d29",
+	}
 
+	Context("When reconciling a resource", func() {
 		ctx := context.Background()
 
-		typeNamespacedName := types.NamespacedName{
-			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
-		}
-		vpc := &galacticv1alpha.VPC{}
+		for resourceNum := 0; resourceNum < len(result_identifiers); resourceNum++ {
+			var resourceName = fmt.Sprintf("vpc-%d", resourceNum)
 
-		BeforeEach(func() {
-			By("creating the custom resource for the Kind VPC")
-			err := k8sClient.Get(ctx, typeNamespacedName, vpc)
-			if err != nil && errors.IsNotFound(err) {
-				resource := &galacticv1alpha.VPC{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: "default",
-					},
-					// TODO(user): Specify other spec details if needed.
+			typeNamespacedName := types.NamespacedName{
+				Name:      resourceName,
+				Namespace: "default",
+			}
+			vpc := &galacticv1alpha.VPC{}
+
+			BeforeEach(func() {
+				By("creating the custom resource for the Kind VPC")
+				err := k8sClient.Get(ctx, typeNamespacedName, vpc)
+				if err != nil && errors.IsNotFound(err) {
+					resource := &galacticv1alpha.VPC{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      resourceName,
+							Namespace: "default",
+						},
+						Spec: galacticv1alpha.VPCSpec{
+							Networks: []string{
+								"10.1.1.0/24",
+								"2001:10:1:1::/64",
+							},
+						},
+					}
+					Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+
+					err = k8sClient.Get(ctx, typeNamespacedName, resource)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(resource.Status.Ready).To(BeFalse())
+					Expect(resource.Status.Identifier).To(BeEmpty())
 				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
-			}
-		})
-
-		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &galacticv1alpha.VPC{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Cleanup the specific resource instance VPC")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-		})
-		It("should successfully reconcile the resource", func() {
-			By("Reconciling the created resource")
-			controllerReconciler := &VPCReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
-			}
-
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
 			})
+
+			It("should successfully reconcile the resource", func() {
+				By("reconciling the created resource")
+				controllerReconciler := &VPCReconciler{
+					Client: k8sClient,
+					Scheme: k8sClient.Scheme(),
+				}
+
+				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: typeNamespacedName,
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				resource := &galacticv1alpha.VPC{}
+				err = k8sClient.Get(ctx, typeNamespacedName, resource)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(resource.Status.Ready).To(BeTrue())
+				Expect(resource.Status.Identifier).To(Equal(result_identifiers[resourceNum]))
+			})
+		}
+
+		It("should cleanup the resources", func() {
+			By("listing and checking the number of VPCs and then deleting them")
+			var vpcs galacticv1alpha.VPCList
+			err := k8sClient.List(ctx, &vpcs)
 			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
+			Expect(vpcs.Items).To(HaveLen(len(result_identifiers)))
+			for _, vpc := range vpcs.Items {
+				Expect(k8sClient.Delete(ctx, &vpc)).To(Succeed())
+			}
 		})
 	})
 })

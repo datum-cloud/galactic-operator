@@ -37,15 +37,30 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of VPC
+            description: spec defines the desired state of a VPC
             properties:
-              foo:
-                description: foo is an example field of VPC. Edit vpc_types.go to
-                  remove/update
-                type: string
+              networks:
+                description: A list of networks in IPv4 or IPv6 CIDR notation associated
+                  with the VPC
+                items:
+                  type: string
+                minItems: 1
+                type: array
+            required:
+            - networks
             type: object
           status:
-            description: status defines the observed state of VPC
+            description: status defines the observed state of a VPC
+            properties:
+              identifier:
+                description: A unique identifier assigned to this VPC
+                type: string
+              ready:
+                default: false
+                description: Indicates whether the VPC is ready for use
+                type: boolean
+            required:
+            - ready
             type: object
         required:
         - spec

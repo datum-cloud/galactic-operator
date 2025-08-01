@@ -1,33 +1,20 @@
-/*
-Copyright 2025.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package controller
 
 import (
 	"context"
+	"fmt"
+	"slices"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	galacticv1alpha "github.com/datum-cloud/galactic-operator/api/v1alpha"
+	"github.com/datum-cloud/galactic-operator/internal/identifier"
 )
 
-// VPCReconciler reconciles a VPC object
+const MaxIdentifierAttempts = 100
+
 type VPCReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -37,27 +24,55 @@ type VPCReconciler struct {
 // +kubebuilder:rbac:groups=galactic.datumapis.com,resources=vpcs/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=galactic.datumapis.com,resources=vpcs/finalizers,verbs=update
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the VPC object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.21.0/pkg/reconcile
 func (r *VPCReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = logf.FromContext(ctx)
+	var vpc galacticv1alpha.VPC
+	if err := r.Get(ctx, req.NamespacedName, &vpc); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
 
-	// TODO(user): your logic here
+	// We only assign an identifier once
+	if vpc.Status.Identifier != "" {
+		return ctrl.Result{}, nil
+	}
+
+	var existingVpcs galacticv1alpha.VPCList
+	if err := r.List(ctx, &existingVpcs, &client.ListOptions{}); err != nil {
+		return ctrl.Result{}, err
+	}
+	existingIdentifiers := vpcsToIdentifiers(existingVpcs)
+
+	for i := 0; i <= MaxIdentifierAttempts; i++ {
+		if i == MaxIdentifierAttempts {
+			return ctrl.Result{}, fmt.Errorf("could not find an unused identifier after %d attempts", MaxIdentifierAttempts)
+		}
+		if vpc.Status.Identifier != "" && !slices.Contains(existingIdentifiers, vpc.Status.Identifier) {
+			break
+		}
+		vpc.Status.Identifier, _ = identifier.NewFromRandom()
+	}
+
+	vpc.Status.Ready = true
+
+	if err := r.Status().Update(ctx, &vpc); err != nil {
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }
 
-// SetupWithManager sets up the controller with the Manager.
 func (r *VPCReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&galacticv1alpha.VPC{}).
 		Named("vpc").
 		Complete(r)
+}
+
+func vpcsToIdentifiers(vpcs galacticv1alpha.VPCList) []string {
+	identifiers := make([]string, 0, len(vpcs.Items))
+	for _, vpc := range vpcs.Items {
+		if vpc.Status.Identifier != "" {
+			identifiers = append(identifiers, vpc.Status.Identifier)
+		}
+	}
+	return identifiers
 }
