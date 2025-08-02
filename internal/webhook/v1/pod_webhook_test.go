@@ -33,6 +33,21 @@ var _ = Describe("Pod Webhook", func() {
 				Name:      VPCAttachmentName,
 				Namespace: "default",
 			},
+			Spec: galacticv1alpha.VPCAttachmentSpec{
+				VPC: corev1.ObjectReference{
+					APIVersion: "galactic.datumapis.com/v1alpha",
+					Kind:       "VPC",
+					Name:       "vpc-sample",
+					Namespace:  "default",
+				},
+				Interface: galacticv1alpha.VPCAttachmentInterface{
+					Name: "galactic0",
+					Addresses: []string{
+						"10.1.1.1/24",
+						"2001:10:1:1::1/64",
+					},
+				},
+			},
 		}
 		Expect(k8sClient.Create(ctx, vpcAttachment)).To(Succeed())
 	})
