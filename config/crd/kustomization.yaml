@@ -4,6 +4,7 @@
 resources:
 - bases/galactic.datumapis.com_vpcs.yaml
 - bases/galactic.datumapis.com_vpcattachments.yaml
+- bases/k8s.cni.cncf.io_network-attachment-definitions.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

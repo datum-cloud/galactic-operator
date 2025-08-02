@@ -40,6 +40,7 @@ import (
 	galacticv1alpha "github.com/datum-cloud/galactic-operator/api/v1alpha"
 	"github.com/datum-cloud/galactic-operator/internal/controller"
 	webhookv1 "github.com/datum-cloud/galactic-operator/internal/webhook/v1"
+	nadv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -52,6 +53,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(galacticv1alpha.AddToScheme(scheme))
+	utilruntime.Must(nadv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 

@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	galacticv1alpha "github.com/datum-cloud/galactic-operator/api/v1alpha"
+	nadv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 )
 
 var _ = Describe("VPCAttachment Controller", func() {
@@ -26,9 +27,12 @@ var _ = Describe("VPCAttachment Controller", func() {
 		}
 
 		BeforeEach(func() {
+			err := nadv1.AddToScheme(k8sClient.Scheme())
+			Expect(err).NotTo(HaveOccurred())
+
 			By("creating the custom resource for the Kind VPC")
 			resource := &galacticv1alpha.VPC{}
-			err := k8sClient.Get(ctx, vpcTypeNamespacedName, resource)
+			err = k8sClient.Get(ctx, vpcTypeNamespacedName, resource)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &galacticv1alpha.VPC{
 					ObjectMeta: metav1.ObjectMeta{
@@ -100,8 +104,10 @@ var _ = Describe("VPCAttachment Controller", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
+			nadResource := &nadv1.NetworkAttachmentDefinition{}
+			err = k8sClient.Get(ctx, vpcAttachmentTypeNamespacedName, nadResource)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(nadResource.Spec.Config).To(Equal(`{}`))
 		})
 	})
 })
