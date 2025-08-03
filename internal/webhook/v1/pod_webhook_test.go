@@ -13,9 +13,7 @@ import (
 )
 
 const VPCAttachmentName = "abcd1234"
-const VPCAttachmentInterface = "eth0"
-
-var PodAnnotationNetworks = fmt.Sprintf("%s@%s", VPCAttachmentName, VPCAttachmentInterface)
+const VPCAttachmentInterface = "galactic0"
 
 var _ = Describe("Pod Webhook", func() {
 	var (
@@ -41,7 +39,7 @@ var _ = Describe("Pod Webhook", func() {
 					Namespace:  "default",
 				},
 				Interface: galacticv1alpha.VPCAttachmentInterface{
-					Name: "galactic0",
+					Name: VPCAttachmentInterface,
 					Addresses: []string{
 						"10.1.1.1/24",
 						"2001:10:1:1::1/64",
@@ -93,7 +91,7 @@ var _ = Describe("Pod Webhook", func() {
 				Scheme: k8sClient.Scheme(),
 			}
 			Expect(defaulter.Default(ctx, pod)).Error().NotTo(HaveOccurred())
-			Expect(pod.Annotations[PodAnnotationMultusNetworks]).To(Equal(PodAnnotationNetworks))
+			Expect(pod.Annotations[PodAnnotationMultusNetworks]).To(Equal(fmt.Sprintf("%s@%s", VPCAttachmentName, VPCAttachmentInterface)))
 		})
 	})
 

@@ -52,7 +52,7 @@ func (d *PodCustomDefaulter) Default(ctx context.Context, obj runtime.Object) er
 	}
 
 	if vpcAttachment, _ := vpcAttachmentByName(d.Client, ctx, pod.Annotations[galacticv1alpha.VPCAttachmentAnnotation], pod.GetNamespace()); vpcAttachment != nil {
-		pod.Annotations[PodAnnotationMultusNetworks] = fmt.Sprintf("%s@eth0", vpcAttachment.Name)
+		pod.Annotations[PodAnnotationMultusNetworks] = fmt.Sprintf("%s@%s", vpcAttachment.Name, vpcAttachment.Spec.Interface.Name)
 	}
 
 	return nil
