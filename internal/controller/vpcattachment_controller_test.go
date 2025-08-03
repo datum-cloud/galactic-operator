@@ -87,6 +87,12 @@ var _ = Describe("VPCAttachment Controller", func() {
 							"2001:10:1:1::1/64",
 						},
 					},
+					Routes: []galacticv1alpha.VPCAttachmentRoute{
+						{Destination: "192.168.1.0/24", Via: "10.1.1.1"},
+						{Destination: "2001:1::/64", Via: "2001:10:1:1::1"},
+						{Destination: "192.168.2.0/24", Via: "10.1.1.2"},
+						{Destination: "2001:2::/64", Via: "2001:10:1:1::2"},
+					},
 				},
 			}
 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -107,7 +113,7 @@ var _ = Describe("VPCAttachment Controller", func() {
 			nadResource := &nadv1.NetworkAttachmentDefinition{}
 			err = k8sClient.Get(ctx, vpcAttachmentTypeNamespacedName, nadResource)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(nadResource.Spec.Config).To(Equal(`{}`))
+			Expect(len(nadResource.Spec.Config)).To(BeNumerically(">", 100))
 		})
 	})
 })

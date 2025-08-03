@@ -2,18 +2,20 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	galacticv1alpha "github.com/datum-cloud/galactic-operator/api/v1alpha"
 	nadv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
+
+	"github.com/datum-cloud/galactic-operator/internal/cniconfig"
 )
 
 type VPCAttachmentReconciler struct {
@@ -27,8 +29,6 @@ type VPCAttachmentReconciler struct {
 // +kubebuilder:rbac:groups=k8s.cni.cncf.io,resources=network-attachment-definitions,verbs=get;list;watch;create;update;patch;delete
 
 func (r *VPCAttachmentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := logf.FromContext(ctx)
-
 	var vpcAttachment galacticv1alpha.VPCAttachment
 	if err := r.Get(ctx, req.NamespacedName, &vpcAttachment); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -41,7 +41,12 @@ func (r *VPCAttachmentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	if err := r.Get(ctx, vpcNamespacedName, &vpc); err != nil {
 		return ctrl.Result{}, err
 	}
-	log.Info("VPC", "vpc", vpc)
+
+	cniPluginConfig, err := cniconfig.CNIConfigForVPCAttachment(vpc, vpcAttachment)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	cniPluginConfigJson, _ := json.Marshal(cniPluginConfig)
 
 	nad := &nadv1.NetworkAttachmentDefinition{
 		ObjectMeta: metav1.ObjectMeta{
@@ -49,7 +54,7 @@ func (r *VPCAttachmentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			Namespace: vpcAttachment.ObjectMeta.Namespace,
 		},
 		Spec: nadv1.NetworkAttachmentDefinitionSpec{
-			Config: `{}`,
+			Config: string(cniPluginConfigJson),
 		},
 	}
 	if err := controllerutil.SetControllerReference(&vpcAttachment, nad, r.Scheme); err != nil {
