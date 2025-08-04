@@ -32,30 +32,28 @@ func (r *VPCReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	}
 
 	// We only assign an identifier once
-	if vpc.Status.Identifier != "" {
-		return ctrl.Result{}, nil
-	}
-
-	var existingVpcs galacticv1alpha.VPCList
-	if err := r.List(ctx, &existingVpcs, &client.ListOptions{}); err != nil {
-		return ctrl.Result{}, err
-	}
-	existingIdentifiers := vpcsToIdentifiers(existingVpcs)
-
-	for i := 0; i <= MaxIdentifierAttemptsVPC; i++ {
-		if i == MaxIdentifierAttemptsVPC {
-			return ctrl.Result{}, fmt.Errorf("could not find an unused identifier after %d attempts", MaxIdentifierAttemptsVPC)
+	if vpc.Status.Identifier == "" {
+		var existingVpcs galacticv1alpha.VPCList
+		if err := r.List(ctx, &existingVpcs, &client.ListOptions{}); err != nil {
+			return ctrl.Result{}, err
 		}
-		if vpc.Status.Identifier != "" && !slices.Contains(existingIdentifiers, vpc.Status.Identifier) {
-			break
+		existingIdentifiers := vpcsToIdentifiers(existingVpcs)
+
+		for i := 0; i <= MaxIdentifierAttemptsVPC; i++ {
+			if i == MaxIdentifierAttemptsVPC {
+				return ctrl.Result{}, fmt.Errorf("could not find an unused identifier after %d attempts", MaxIdentifierAttemptsVPC)
+			}
+			if vpc.Status.Identifier != "" && !slices.Contains(existingIdentifiers, vpc.Status.Identifier) {
+				break
+			}
+			vpc.Status.Identifier, _ = r.Identifier.ForVPC()
 		}
-		vpc.Status.Identifier, _ = r.Identifier.ForVPC()
-	}
 
-	vpc.Status.Ready = true
+		vpc.Status.Ready = true
 
-	if err := r.Status().Update(ctx, &vpc); err != nil {
-		return ctrl.Result{}, err
+		if err := r.Status().Update(ctx, &vpc); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	return ctrl.Result{}, nil

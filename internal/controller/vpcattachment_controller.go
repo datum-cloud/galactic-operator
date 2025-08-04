@@ -48,32 +48,35 @@ func (r *VPCAttachmentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	var existingVpcAttachments galacticv1alpha.VPCAttachmentList
-	if err := r.List(ctx, &existingVpcAttachments, &client.ListOptions{}); err != nil {
-		return ctrl.Result{}, err
-	}
-	existingIdentifiers := vpcAttachmentsToIdentifiers(vpc, existingVpcAttachments)
-
-	for i := 0; i <= MaxIdentifierAttemptsVPCAttachment; i++ {
-		if i == MaxIdentifierAttemptsVPCAttachment {
-			return ctrl.Result{}, fmt.Errorf("could not find an unused identifier after %d attempts", MaxIdentifierAttemptsVPCAttachment)
+	// We only assign an identifier once
+	if vpcAttachment.Status.Identifier == "" {
+		var existingVpcAttachments galacticv1alpha.VPCAttachmentList
+		if err := r.List(ctx, &existingVpcAttachments, &client.ListOptions{}); err != nil {
+			return ctrl.Result{}, err
 		}
-		if vpcAttachment.Status.Identifier != "" && !slices.Contains(existingIdentifiers, vpcAttachment.Status.Identifier) {
-			break
+		existingIdentifiers := vpcAttachmentsToIdentifiers(vpc, existingVpcAttachments)
+
+		for i := 0; i <= MaxIdentifierAttemptsVPCAttachment; i++ {
+			if i == MaxIdentifierAttemptsVPCAttachment {
+				return ctrl.Result{}, fmt.Errorf("could not find an unused identifier after %d attempts", MaxIdentifierAttemptsVPCAttachment)
+			}
+			if vpcAttachment.Status.Identifier != "" && !slices.Contains(existingIdentifiers, vpcAttachment.Status.Identifier) {
+				break
+			}
+			vpcAttachment.Status.Identifier, _ = r.Identifier.ForVPCAttachment()
 		}
-		vpcAttachment.Status.Identifier, _ = r.Identifier.ForVPCAttachment()
-	}
 
-	vpcAttachment.Status.Ready = true
+		vpcAttachment.Status.Ready = true
 
-	if err := r.Status().Update(ctx, &vpcAttachment); err != nil {
-		return ctrl.Result{}, err
-	}
-	if err := r.Get(ctx, vpcNamespacedName, &vpc); err != nil {
-		return ctrl.Result{}, err
-	}
-	if err := r.Get(ctx, req.NamespacedName, &vpcAttachment); err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		if err := r.Status().Update(ctx, &vpcAttachment); err != nil {
+			return ctrl.Result{}, err
+		}
+		if err := r.Get(ctx, vpcNamespacedName, &vpc); err != nil {
+			return ctrl.Result{}, err
+		}
+		if err := r.Get(ctx, req.NamespacedName, &vpcAttachment); err != nil {
+			return ctrl.Result{}, client.IgnoreNotFound(err)
+		}
 	}
 
 	cniPluginConfig, err := cniconfig.CNIConfigForVPCAttachment(vpc, vpcAttachment)
