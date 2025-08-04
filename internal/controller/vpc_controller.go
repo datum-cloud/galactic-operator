@@ -13,11 +13,12 @@ import (
 	"github.com/datum-cloud/galactic-operator/internal/identifier"
 )
 
-const MaxIdentifierAttempts = 100
+const MaxIdentifierAttemptsVPC = 100
 
 type VPCReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme     *runtime.Scheme
+	Identifier *identifier.Identifier
 }
 
 // +kubebuilder:rbac:groups=galactic.datumapis.com,resources=vpcs,verbs=get;list;watch;create;update;patch;delete
@@ -41,14 +42,14 @@ func (r *VPCReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	}
 	existingIdentifiers := vpcsToIdentifiers(existingVpcs)
 
-	for i := 0; i <= MaxIdentifierAttempts; i++ {
-		if i == MaxIdentifierAttempts {
-			return ctrl.Result{}, fmt.Errorf("could not find an unused identifier after %d attempts", MaxIdentifierAttempts)
+	for i := 0; i <= MaxIdentifierAttemptsVPC; i++ {
+		if i == MaxIdentifierAttemptsVPC {
+			return ctrl.Result{}, fmt.Errorf("could not find an unused identifier after %d attempts", MaxIdentifierAttemptsVPC)
 		}
 		if vpc.Status.Identifier != "" && !slices.Contains(existingIdentifiers, vpc.Status.Identifier) {
 			break
 		}
-		vpc.Status.Identifier, _ = identifier.NewFromRandom()
+		vpc.Status.Identifier, _ = r.Identifier.ForVPC()
 	}
 
 	vpc.Status.Ready = true

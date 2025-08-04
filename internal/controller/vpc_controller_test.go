@@ -17,8 +17,6 @@ import (
 )
 
 var _ = Describe("VPC Controller", func() {
-	// Set fixed seed and expected identifiers
-	identifier.Seed(424242)
 	result_identifiers := []string{
 		"f5b6726c782b",
 		"f68a7a2a17d9",
@@ -65,8 +63,9 @@ var _ = Describe("VPC Controller", func() {
 			It("should successfully reconcile the resource", func() {
 				By("reconciling the created resource")
 				controllerReconciler := &VPCReconciler{
-					Client: k8sClient,
-					Scheme: k8sClient.Scheme(),
+					Client:     k8sClient,
+					Scheme:     k8sClient.Scheme(),
+					Identifier: identifier.NewFromSeed(424242),
 				}
 
 				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

@@ -52,6 +52,10 @@ type VPCAttachmentStatus struct {
 	// +required
 	// +default:value=false
 	Ready bool `json:"ready,omitempty"`
+
+	// A unique identifier assigned to this VPCAttachment
+	// +optional
+	Identifier string `json:"identifier,omitempty"`
 }
 
 // +kubebuilder:object:root=true

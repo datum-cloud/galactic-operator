@@ -6,28 +6,45 @@ import (
 	"time"
 )
 
-const MinIdentifier uint64 = 0x000000000000
-const MaxIdentifier uint64 = 0xFFFFFFFFFFFF
-const MinValidIdentifier uint64 = MinIdentifier + 1
-const MaxValidIdentifier uint64 = MaxIdentifier - 1
+const MaxVPC uint64 = 0xFFFFFFFFFFFF
+const MaxVPCAttachment uint64 = 0xFFFF
 
-var r = rand.New(rand.NewSource(time.Now().UnixNano()))
-
-func Seed(seed int64) {
-	r = rand.New(rand.NewSource(seed))
+type Identifier struct {
+	r *rand.Rand
 }
 
-func NewFromInteger(value uint64) (string, error) {
-	if value == 0 || value == MaxIdentifier {
+func New() *Identifier {
+	return &Identifier{
+		r: rand.New(rand.NewSource(time.Now().UnixNano())),
+	}
+}
+
+func NewFromSeed(seed int64) *Identifier {
+	return &Identifier{
+		r: rand.New(rand.NewSource(seed)),
+	}
+}
+
+func (id *Identifier) FromValue(value uint64, max uint64) (string, error) {
+	if value == 0 || value == max {
 		return "", fmt.Errorf("%d is a special value that cannot be used", value)
 	}
-	if value > MaxIdentifier {
-		return "", fmt.Errorf("%d exceeds maximum value %d", value, MaxIdentifier)
+	if value > max {
+		return "", fmt.Errorf("%d exceeds maximum value %d", value, max)
 	}
-	return fmt.Sprintf("%012x", value), nil
+	maxLen := len(fmt.Sprintf("%x", max))
+	return fmt.Sprintf("%0*x", maxLen, value), nil
 }
 
-func NewFromRandom() (string, error) {
-	n := uint64(r.Int63n(int64(MaxValidIdentifier)) + int64(MinValidIdentifier))
-	return NewFromInteger(n)
+func (id *Identifier) FromRandom(max uint64) (string, error) {
+	n := uint64(id.r.Int63n(int64(max-1)) + int64(1))
+	return id.FromValue(n, max)
+}
+
+func (id *Identifier) ForVPC() (string, error) {
+	return id.FromRandom(MaxVPC)
+}
+
+func (id *Identifier) ForVPCAttachment() (string, error) {
+	return id.FromRandom(MaxVPCAttachment)
 }

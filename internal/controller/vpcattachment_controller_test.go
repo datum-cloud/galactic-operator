@@ -14,6 +14,8 @@ import (
 
 	galacticv1alpha "github.com/datum-cloud/galactic-operator/api/v1alpha"
 	nadv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
+
+	"github.com/datum-cloud/galactic-operator/internal/identifier"
 )
 
 var _ = Describe("VPCAttachment Controller", func() {
@@ -96,11 +98,14 @@ var _ = Describe("VPCAttachment Controller", func() {
 				},
 			}
 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+			Expect(resource.Status.Ready).To(BeFalse())
+			Expect(resource.Status.Identifier).To(BeEmpty())
 
 			By("reconciling the created resource")
 			controllerReconciler := &VPCAttachmentReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:     k8sClient,
+				Scheme:     k8sClient.Scheme(),
+				Identifier: identifier.NewFromSeed(424242),
 			}
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: vpcTypeNamespacedName,
@@ -109,6 +114,13 @@ var _ = Describe("VPCAttachment Controller", func() {
 				NamespacedName: vpcAttachmentTypeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
+
+			resource = &galacticv1alpha.VPCAttachment{}
+			err = k8sClient.Get(ctx, vpcAttachmentTypeNamespacedName, resource)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(resource.Status.Ready).To(BeTrue())
+			Expect(resource.Status.Identifier).To(Equal("e513"))
 
 			nadResource := &nadv1.NetworkAttachmentDefinition{}
 			err = k8sClient.Get(ctx, vpcAttachmentTypeNamespacedName, nadResource)

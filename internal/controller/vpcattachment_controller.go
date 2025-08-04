@@ -3,6 +3,8 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"slices"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -16,11 +18,15 @@ import (
 	nadv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
 
 	"github.com/datum-cloud/galactic-operator/internal/cniconfig"
+	"github.com/datum-cloud/galactic-operator/internal/identifier"
 )
+
+const MaxIdentifierAttemptsVPCAttachment = 100
 
 type VPCAttachmentReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme     *runtime.Scheme
+	Identifier *identifier.Identifier
 }
 
 // +kubebuilder:rbac:groups=galactic.datumapis.com,resources=vpcattachments,verbs=get;list;watch;create;update;patch;delete
@@ -64,6 +70,28 @@ func (r *VPCAttachmentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
+	var existingVpcAttachments galacticv1alpha.VPCAttachmentList
+	if err := r.List(ctx, &existingVpcAttachments, &client.ListOptions{}); err != nil {
+		return ctrl.Result{}, err
+	}
+	existingIdentifiers := vpcAttachmentsToIdentifiers(vpc, existingVpcAttachments)
+
+	for i := 0; i <= MaxIdentifierAttemptsVPCAttachment; i++ {
+		if i == MaxIdentifierAttemptsVPCAttachment {
+			return ctrl.Result{}, fmt.Errorf("could not find an unused identifier after %d attempts", MaxIdentifierAttemptsVPCAttachment)
+		}
+		if vpcAttachment.Status.Identifier != "" && !slices.Contains(existingIdentifiers, vpcAttachment.Status.Identifier) {
+			break
+		}
+		vpcAttachment.Status.Identifier, _ = r.Identifier.ForVPCAttachment()
+	}
+
+	vpcAttachment.Status.Ready = true
+
+	if err := r.Status().Update(ctx, &vpcAttachment); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -72,4 +100,16 @@ func (r *VPCAttachmentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&galacticv1alpha.VPCAttachment{}).
 		Named("vpcattachment").
 		Complete(r)
+}
+
+func vpcAttachmentsToIdentifiers(vpc galacticv1alpha.VPC, vpcAttachments galacticv1alpha.VPCAttachmentList) []string {
+	identifiers := make([]string, 0, len(vpcAttachments.Items))
+	for _, vpcAttachment := range vpcAttachments.Items {
+		if vpcAttachment.Status.Identifier != "" &&
+			vpcAttachment.Spec.VPC.Name == vpc.ObjectMeta.Name &&
+			vpcAttachment.Spec.VPC.Namespace == vpc.ObjectMeta.Namespace {
+			identifiers = append(identifiers, vpcAttachment.Status.Identifier)
+		}
+	}
+	return identifiers
 }

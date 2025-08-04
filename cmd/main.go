@@ -41,6 +41,8 @@ import (
 	"github.com/datum-cloud/galactic-operator/internal/controller"
 	webhookv1 "github.com/datum-cloud/galactic-operator/internal/webhook/v1"
 	nadv1 "github.com/k8snetworkplumbingwg/network-attachment-definition-client/pkg/apis/k8s.cni.cncf.io/v1"
+
+	"github.com/datum-cloud/galactic-operator/internal/identifier"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -206,15 +208,17 @@ func main() {
 	}
 
 	if err := (&controller.VPCReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		Identifier: identifier.New(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VPC")
 		os.Exit(1)
 	}
 	if err := (&controller.VPCAttachmentReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		Identifier: identifier.New(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VPCAttachment")
 		os.Exit(1)
