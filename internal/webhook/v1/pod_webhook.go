@@ -51,6 +51,10 @@ func (d *PodCustomDefaulter) Default(ctx context.Context, obj runtime.Object) er
 		return fmt.Errorf("expected an Pod object but got %T", obj)
 	}
 
+	if _, exists := pod.Annotations[galacticv1alpha.VPCAttachmentAnnotation]; !exists {
+		return nil
+	}
+
 	if vpcAttachment, _ := vpcAttachmentByName(d.Client, ctx, pod.Annotations[galacticv1alpha.VPCAttachmentAnnotation], pod.GetNamespace()); vpcAttachment != nil {
 		pod.Annotations[PodAnnotationMultusNetworks] = fmt.Sprintf("%s@%s", vpcAttachment.Name, vpcAttachment.Spec.Interface.Name)
 	}
@@ -71,6 +75,10 @@ func (v *PodCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Obj
 	pod, ok := obj.(*corev1.Pod)
 	if !ok {
 		return nil, fmt.Errorf("expected a Pod object but got %T", obj)
+	}
+
+	if _, exists := pod.Annotations[galacticv1alpha.VPCAttachmentAnnotation]; !exists {
+		return nil, nil
 	}
 
 	if _, err := vpcAttachmentByName(v.Client, ctx, pod.Annotations[galacticv1alpha.VPCAttachmentAnnotation], pod.GetNamespace()); err != nil {
