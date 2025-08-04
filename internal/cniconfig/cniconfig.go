@@ -49,11 +49,11 @@ type Address struct {
 }
 
 func CNIConfigForVPCAttachment(vpc galacticv1alpha.VPC, vpcAttachment galacticv1alpha.VPCAttachment) (NetConfList, error) {
-	var terminations []Termination
-	var addresses []Address
-	var routes []Route
+	terminations := make([]Termination, 0, 10)
+	addresses := make([]Address, 0, 10)
+	routes := make([]Route, 0, 10)
 
-	var netAddresses []net.IP // to check if a route is local
+	netAddresses := make([]net.IP, 0, 10) // to check if a route is local
 
 	for _, address := range vpcAttachment.Spec.Interface.Addresses {
 		netAddress, network, err := net.ParseCIDR(address)

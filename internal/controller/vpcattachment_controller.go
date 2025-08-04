@@ -84,8 +84,8 @@ func (r *VPCAttachmentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	nad := &nadv1.NetworkAttachmentDefinition{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      vpcAttachment.ObjectMeta.Name,
-			Namespace: vpcAttachment.ObjectMeta.Namespace,
+			Name:      vpcAttachment.Name,
+			Namespace: vpcAttachment.Namespace,
 		},
 		Spec: nadv1.NetworkAttachmentDefinitionSpec{
 			Config: string(cniPluginConfigJson),
@@ -112,8 +112,8 @@ func vpcAttachmentsToIdentifiers(vpc galacticv1alpha.VPC, vpcAttachments galacti
 	identifiers := make([]string, 0, len(vpcAttachments.Items))
 	for _, vpcAttachment := range vpcAttachments.Items {
 		if vpcAttachment.Status.Identifier != "" &&
-			vpcAttachment.Spec.VPC.Name == vpc.ObjectMeta.Name &&
-			vpcAttachment.Spec.VPC.Namespace == vpc.ObjectMeta.Namespace {
+			vpcAttachment.Spec.VPC.Name == vpc.Name &&
+			vpcAttachment.Spec.VPC.Namespace == vpc.Namespace {
 			identifiers = append(identifiers, vpcAttachment.Status.Identifier)
 		}
 	}

@@ -106,13 +106,13 @@ func (v *PodCustomValidator) ValidateDelete(ctx context.Context, obj runtime.Obj
 	return nil, nil
 }
 
-func vpcAttachmentByName(client client.Client, ctx context.Context, name, namespace string) (*galacticv1alpha.VPCAttachment, error) {
+func vpcAttachmentByName(k8sClient client.Client, ctx context.Context, name, namespace string) (*galacticv1alpha.VPCAttachment, error) {
 	typeNamespacedName := types.NamespacedName{
 		Name:      name,
 		Namespace: namespace,
 	}
 	var vpcAttachment galacticv1alpha.VPCAttachment
-	if err := client.Get(ctx, typeNamespacedName, &vpcAttachment); err != nil {
+	if err := k8sClient.Get(ctx, typeNamespacedName, &vpcAttachment); err != nil {
 		return nil, err
 	}
 	return &vpcAttachment, nil

@@ -110,6 +110,7 @@ var _ = Describe("VPCAttachment Controller", func() {
 			_, err := vpcControllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: vpcTypeNamespacedName,
 			})
+			Expect(err).NotTo(HaveOccurred())
 			vpcAttachmentControllerReconciler := &VPCAttachmentReconciler{
 				Client:     k8sClient,
 				Scheme:     k8sClient.Scheme(),
