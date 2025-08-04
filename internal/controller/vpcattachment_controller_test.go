@@ -102,15 +102,20 @@ var _ = Describe("VPCAttachment Controller", func() {
 			Expect(resource.Status.Identifier).To(BeEmpty())
 
 			By("reconciling the created resource")
-			controllerReconciler := &VPCAttachmentReconciler{
+			vpcControllerReconciler := &VPCReconciler{
 				Client:     k8sClient,
 				Scheme:     k8sClient.Scheme(),
 				Identifier: identifier.NewFromSeed(424242),
 			}
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+			_, err := vpcControllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: vpcTypeNamespacedName,
 			})
-			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+			vpcAttachmentControllerReconciler := &VPCAttachmentReconciler{
+				Client:     k8sClient,
+				Scheme:     k8sClient.Scheme(),
+				Identifier: identifier.NewFromSeed(424242),
+			}
+			_, err = vpcAttachmentControllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: vpcAttachmentTypeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())

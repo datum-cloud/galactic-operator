@@ -48,28 +48,6 @@ func (r *VPCAttachmentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	cniPluginConfig, err := cniconfig.CNIConfigForVPCAttachment(vpc, vpcAttachment)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	cniPluginConfigJson, _ := json.Marshal(cniPluginConfig)
-
-	nad := &nadv1.NetworkAttachmentDefinition{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      vpcAttachment.ObjectMeta.Name,
-			Namespace: vpcAttachment.ObjectMeta.Namespace,
-		},
-		Spec: nadv1.NetworkAttachmentDefinitionSpec{
-			Config: string(cniPluginConfigJson),
-		},
-	}
-	if err := controllerutil.SetControllerReference(&vpcAttachment, nad, r.Scheme); err != nil {
-		return ctrl.Result{}, err
-	}
-	if err := r.Create(ctx, nad); err != nil {
-		return ctrl.Result{}, err
-	}
-
 	var existingVpcAttachments galacticv1alpha.VPCAttachmentList
 	if err := r.List(ctx, &existingVpcAttachments, &client.ListOptions{}); err != nil {
 		return ctrl.Result{}, err
@@ -89,6 +67,34 @@ func (r *VPCAttachmentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	vpcAttachment.Status.Ready = true
 
 	if err := r.Status().Update(ctx, &vpcAttachment); err != nil {
+		return ctrl.Result{}, err
+	}
+	if err := r.Get(ctx, vpcNamespacedName, &vpc); err != nil {
+		return ctrl.Result{}, err
+	}
+	if err := r.Get(ctx, req.NamespacedName, &vpcAttachment); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	cniPluginConfig, err := cniconfig.CNIConfigForVPCAttachment(vpc, vpcAttachment)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	cniPluginConfigJson, _ := json.Marshal(cniPluginConfig)
+
+	nad := &nadv1.NetworkAttachmentDefinition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      vpcAttachment.ObjectMeta.Name,
+			Namespace: vpcAttachment.ObjectMeta.Namespace,
+		},
+		Spec: nadv1.NetworkAttachmentDefinitionSpec{
+			Config: string(cniPluginConfigJson),
+		},
+	}
+	if err := controllerutil.SetControllerReference(&vpcAttachment, nad, r.Scheme); err != nil {
+		return ctrl.Result{}, err
+	}
+	if err := r.Create(ctx, nad); err != nil {
 		return ctrl.Result{}, err
 	}
 

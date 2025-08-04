@@ -57,7 +57,8 @@ func TestCNIConfigForVPCAttachment(t *testing.T) {
 			},
 		},
 		Status: galacticv1alpha.VPCStatus{
-			Identifier: "abcdef123456",
+			Ready:      true,
+			Identifier: "ffffffffffff",
 		},
 	}
 	vpcAttachment := galacticv1alpha.VPCAttachment{
@@ -85,6 +86,10 @@ func TestCNIConfigForVPCAttachment(t *testing.T) {
 				{Destination: "192.168.2.0/24", Via: "10.1.1.2"},
 				{Destination: "2001:2::/64", Via: "2001:10:1:1::2"},
 			},
+		},
+		Status: galacticv1alpha.VPCAttachmentStatus{
+			Ready:      true,
+			Identifier: "ffff",
 		},
 	}
 	actual, err := cniconfig.CNIConfigForVPCAttachment(vpc, vpcAttachment)

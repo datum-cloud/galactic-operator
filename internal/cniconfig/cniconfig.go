@@ -5,6 +5,8 @@ import (
 	"net"
 
 	galacticv1alpha "github.com/datum-cloud/galactic-operator/api/v1alpha"
+
+	"github.com/kenshaw/baseconv"
 )
 
 // types inlined from CNI and Galactic CNI packages to simplify cross dependencies
@@ -46,7 +48,7 @@ type Address struct {
 	Address string `json:"address"`
 }
 
-func CNIConfigForVPCAttachment(_ galacticv1alpha.VPC, vpcAttachment galacticv1alpha.VPCAttachment) (NetConfList, error) {
+func CNIConfigForVPCAttachment(vpc galacticv1alpha.VPC, vpcAttachment galacticv1alpha.VPCAttachment) (NetConfList, error) {
 	var terminations []Termination
 	var addresses []Address
 	var routes []Route
@@ -90,6 +92,17 @@ func CNIConfigForVPCAttachment(_ galacticv1alpha.VPC, vpcAttachment galacticv1al
 		}
 	}
 
+	vpcIdentifierBase62, err := baseconv.Convert(vpc.Status.Identifier, baseconv.DigitsHex, baseconv.Digits62)
+	if err != nil {
+		return NetConfList{}, err
+	}
+	vpcAttachmentIdentifierBase62, err := baseconv.Convert(vpcAttachment.Status.Identifier, baseconv.DigitsHex, baseconv.Digits62)
+	if err != nil {
+		return NetConfList{}, err
+	}
+
+	// TODO Change to use VPC & VPCAttachment identifiers once CNI is adjusted
+	_ = fmt.Sprintf("G%s%sG", vpcIdentifierBase62, vpcAttachmentIdentifierBase62)
 	return NetConfList{
 		CNIVersion: "0.4.0",
 		Plugins: []interface{}{
