@@ -115,7 +115,7 @@ func CNIConfigForVPCAttachment(vpc galacticv1alpha.VPC, vpcAttachment galacticv1
 			},
 			PluginConfHostDevice{
 				Type:   "host-device",
-				Device: fmt.Sprintf("G%s%sG", vpcIdentifierBase62, vpcAttachmentIdentifierBase62),
+				Device: fmt.Sprintf("G%09s%03sG", vpcIdentifierBase62, vpcAttachmentIdentifierBase62),
 				IPAM: IPAM{
 					Type:      "static",
 					Addresses: addresses,
