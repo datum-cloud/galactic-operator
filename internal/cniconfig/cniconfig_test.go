@@ -17,9 +17,10 @@ func TestCNIConfigForVPCAttachment(t *testing.T) {
 		CNIVersion: "0.4.0",
 		Plugins: []interface{}{
 			cniconfig.PluginConfGalactic{
-				Type: "galactic-cni",
-				Id:   5,
-				MTU:  1300,
+				Type:          "galactic-cni",
+				VPC:           "1hVwxnaA7",
+				VPCAttachment: "h31",
+				MTU:           1300,
 				Terminations: []cniconfig.Termination{
 					{Network: "10.1.1.0/24"},
 					{Network: "2001:10:1:1::/64"},
@@ -29,7 +30,7 @@ func TestCNIConfigForVPCAttachment(t *testing.T) {
 			},
 			cniconfig.PluginConfHostDevice{
 				Type:   "host-device",
-				Device: "galactic5-guest",
+				Device: "G1hVwxnaA7h31G",
 				IPAM: cniconfig.IPAM{
 					Type: "static",
 					Addresses: []cniconfig.Address{

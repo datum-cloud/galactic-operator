@@ -16,10 +16,11 @@ type NetConfList struct {
 }
 
 type PluginConfGalactic struct {
-	Type         string        `json:"type"`
-	Id           int           `json:"id"`
-	MTU          int           `json:"mtu,omitempty"`
-	Terminations []Termination `json:"terminations,omitempty"`
+	Type          string        `json:"type"`
+	VPC           string        `json:"vpc"`
+	VPCAttachment string        `json:"vpcattachment"`
+	MTU           int           `json:"mtu,omitempty"`
+	Terminations  []Termination `json:"terminations,omitempty"`
 }
 
 type Termination struct {
@@ -102,19 +103,19 @@ func CNIConfigForVPCAttachment(vpc galacticv1alpha.VPC, vpcAttachment galacticv1
 	}
 
 	// TODO Change to use VPC & VPCAttachment identifiers once CNI is adjusted
-	_ = fmt.Sprintf("G%s%sG", vpcIdentifierBase62, vpcAttachmentIdentifierBase62)
 	return NetConfList{
 		CNIVersion: "0.4.0",
 		Plugins: []interface{}{
 			PluginConfGalactic{
-				Type:         "galactic-cni",
-				Id:           5,
-				MTU:          1300,
-				Terminations: terminations,
+				Type:          "galactic-cni",
+				VPC:           vpcIdentifierBase62,
+				VPCAttachment: vpcAttachmentIdentifierBase62,
+				MTU:           1300,
+				Terminations:  terminations,
 			},
 			PluginConfHostDevice{
 				Type:   "host-device",
-				Device: "galactic5-guest",
+				Device: fmt.Sprintf("G%s%sG", vpcIdentifierBase62, vpcAttachmentIdentifierBase62),
 				IPAM: IPAM{
 					Type:      "static",
 					Addresses: addresses,
