@@ -21,6 +21,7 @@ type PluginConfGalactic struct {
 	VPCAttachment string        `json:"vpcattachment"`
 	MTU           int           `json:"mtu,omitempty"`
 	Terminations  []Termination `json:"terminations,omitempty"`
+	IPAM          IPAM          `json:"ipam,omitempty"`
 }
 
 type Termination struct {
