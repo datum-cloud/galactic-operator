@@ -27,10 +27,6 @@ func TestCNIConfigForVPCAttachment(t *testing.T) {
 					{Network: "192.168.1.0/24", Via: "10.1.1.1"},
 					{Network: "2001:1::/64", Via: "2001:10:1:1::1"},
 				},
-			},
-			cniconfig.PluginConfHostDevice{
-				Type:   "host-device",
-				Device: "G1hVwxnaA7h31G",
 				IPAM: cniconfig.IPAM{
 					Type: "static",
 					Addresses: []cniconfig.Address{

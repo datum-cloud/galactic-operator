@@ -21,17 +21,12 @@ type PluginConfGalactic struct {
 	VPCAttachment string        `json:"vpcattachment"`
 	MTU           int           `json:"mtu,omitempty"`
 	Terminations  []Termination `json:"terminations,omitempty"`
+	IPAM          IPAM          `json:"ipam,omitempty"`
 }
 
 type Termination struct {
 	Network string `json:"network"`
 	Via     string `json:"via,omitempty"`
-}
-
-type PluginConfHostDevice struct {
-	Type   string `json:"type"`
-	Device string `json:"device"`
-	IPAM   IPAM   `json:"ipam,omitempty"`
 }
 
 type IPAM struct {
@@ -112,10 +107,6 @@ func CNIConfigForVPCAttachment(vpc galacticv1alpha.VPC, vpcAttachment galacticv1
 				VPCAttachment: vpcAttachmentIdentifierBase62,
 				MTU:           1300,
 				Terminations:  terminations,
-			},
-			PluginConfHostDevice{
-				Type:   "host-device",
-				Device: fmt.Sprintf("G%09s%03sG", vpcIdentifierBase62, vpcAttachmentIdentifierBase62),
 				IPAM: IPAM{
 					Type:      "static",
 					Addresses: addresses,
