@@ -754,6 +754,10 @@ webhooks:
       namespace: galactic-operator-system
       path: /mutate--v1-pod
   failurePolicy: Fail
+  matchConditions:
+  - expression: object != null && has(object.metadata) && has(object.metadata.annotations)
+      && "k8s.v1alpha.galactic.datumapis.com/vpc-attachment" in object.metadata.annotations
+    name: vpc-attachment-annotation-exists
   name: mpod-v1.kb.io
   rules:
   - apiGroups:
@@ -782,6 +786,10 @@ webhooks:
       namespace: galactic-operator-system
       path: /validate--v1-pod
   failurePolicy: Fail
+  matchConditions:
+  - expression: object != null && has(object.metadata) && has(object.metadata.annotations)
+      && "k8s.v1alpha.galactic.datumapis.com/vpc-attachment" in object.metadata.annotations
+    name: vpc-attachment-annotation-exists
   name: vpod-v1.kb.io
   rules:
   - apiGroups:
