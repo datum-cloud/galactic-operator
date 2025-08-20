@@ -79,25 +79,29 @@ func (r *VPCAttachmentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	cniPluginConfig, err := cniconfig.CNIConfigForVPCAttachment(vpc, vpcAttachment)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	cniPluginConfigJson, _ := json.Marshal(cniPluginConfig)
-
 	nad := &nadv1.NetworkAttachmentDefinition{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      vpcAttachment.Name,
 			Namespace: vpcAttachment.Namespace,
 		},
-		Spec: nadv1.NetworkAttachmentDefinitionSpec{
+	}
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, nad, func() error {
+		cniPluginConfig, err := cniconfig.CNIConfigForVPCAttachment(vpc, vpcAttachment)
+		if err != nil {
+			return err
+		}
+		cniPluginConfigJson, _ := json.Marshal(cniPluginConfig)
+
+		nad.Spec = nadv1.NetworkAttachmentDefinitionSpec{
 			Config: string(cniPluginConfigJson),
-		},
-	}
-	if err := controllerutil.SetControllerReference(&vpcAttachment, nad, r.Scheme); err != nil {
-		return ctrl.Result{}, err
-	}
-	if err := r.Create(ctx, nad); err != nil {
+		}
+
+		if err := controllerutil.SetControllerReference(&vpcAttachment, nad, r.Scheme); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return ctrl.Result{}, err
 	}
 
