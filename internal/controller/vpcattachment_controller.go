@@ -75,12 +75,6 @@ func (r *VPCAttachmentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		if err := r.Status().Update(ctx, &vpcAttachment); err != nil {
 			return ctrl.Result{}, err
 		}
-		if err := r.Get(ctx, vpcNamespacedName, &vpc); err != nil {
-			return ctrl.Result{}, err
-		}
-		if err := r.Get(ctx, req.NamespacedName, &vpcAttachment); err != nil {
-			return ctrl.Result{}, client.IgnoreNotFound(err)
-		}
 	}
 
 	nad := &nadv1.NetworkAttachmentDefinition{
