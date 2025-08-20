@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -46,6 +47,9 @@ func (r *VPCAttachmentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	var vpc galacticv1alpha.VPC
 	if err := r.Get(ctx, vpcNamespacedName, &vpc); err != nil {
 		return ctrl.Result{}, err
+	}
+	if !vpc.Status.Ready {
+		return ctrl.Result{RequeueAfter: 1 * time.Second}, nil
 	}
 
 	// We only assign an identifier once

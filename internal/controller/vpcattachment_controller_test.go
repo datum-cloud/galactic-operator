@@ -104,21 +104,25 @@ var _ = Describe("VPCAttachment Controller", func() {
 
 			for run := 1; run <= 3; run++ { // make sure multiple reconcile runs work
 				By(fmt.Sprintf("reconciling the created resource (run #%d)", run))
-				vpcControllerReconciler := &VPCReconciler{
-					Client:     k8sClient,
-					Scheme:     k8sClient.Scheme(),
-					Identifier: identifier.NewFromSeed(424242),
+
+				if run > 1 { // skip the first run to test what happens if the the VPC is not ready yet
+					vpcControllerReconciler := &VPCReconciler{
+						Client:     k8sClient,
+						Scheme:     k8sClient.Scheme(),
+						Identifier: identifier.NewFromSeed(424242),
+					}
+					_, err := vpcControllerReconciler.Reconcile(ctx, reconcile.Request{
+						NamespacedName: vpcTypeNamespacedName,
+					})
+					Expect(err).NotTo(HaveOccurred())
 				}
-				_, err := vpcControllerReconciler.Reconcile(ctx, reconcile.Request{
-					NamespacedName: vpcTypeNamespacedName,
-				})
-				Expect(err).NotTo(HaveOccurred())
+
 				vpcAttachmentControllerReconciler := &VPCAttachmentReconciler{
 					Client:     k8sClient,
 					Scheme:     k8sClient.Scheme(),
 					Identifier: identifier.NewFromSeed(424242),
 				}
-				_, err = vpcAttachmentControllerReconciler.Reconcile(ctx, reconcile.Request{
+				_, err := vpcAttachmentControllerReconciler.Reconcile(ctx, reconcile.Request{
 					NamespacedName: vpcAttachmentTypeNamespacedName,
 				})
 				Expect(err).NotTo(HaveOccurred())
@@ -126,14 +130,17 @@ var _ = Describe("VPCAttachment Controller", func() {
 				resource = &galacticv1alpha.VPCAttachment{}
 				err = k8sClient.Get(ctx, vpcAttachmentTypeNamespacedName, resource)
 				Expect(err).NotTo(HaveOccurred())
+				if run == 1 {
+					Expect(resource.Status.Ready).To(BeFalse())
+				} else {
+					Expect(resource.Status.Ready).To(BeTrue())
+					Expect(resource.Status.Identifier).To(Equal("e513"))
 
-				Expect(resource.Status.Ready).To(BeTrue())
-				Expect(resource.Status.Identifier).To(Equal("e513"))
-
-				nadResource := &nadv1.NetworkAttachmentDefinition{}
-				err = k8sClient.Get(ctx, vpcAttachmentTypeNamespacedName, nadResource)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(len(nadResource.Spec.Config)).To(BeNumerically(">", 100))
+					nadResource := &nadv1.NetworkAttachmentDefinition{}
+					err = k8sClient.Get(ctx, vpcAttachmentTypeNamespacedName, nadResource)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(len(nadResource.Spec.Config)).To(BeNumerically(">", 100))
+				}
 			}
 		})
 	})
