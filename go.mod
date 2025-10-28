@@ -1,6 +1,6 @@
 module github.com/datum-cloud/galactic-operator
 
-go 1.24.0
+go 1.24.9
 
 require (
 	github.com/datum-cloud/galactic-common v0.0.0-20251028201425-f06de7d6ad01
