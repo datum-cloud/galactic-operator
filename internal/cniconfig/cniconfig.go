@@ -6,7 +6,7 @@ import (
 
 	galacticv1alpha "github.com/datum-cloud/galactic-operator/api/v1alpha"
 
-	"github.com/kenshaw/baseconv"
+	"github.com/datum-cloud/galactic-common/util"
 )
 
 // types inlined from CNI and Galactic CNI packages to simplify cross dependencies
@@ -88,11 +88,11 @@ func CNIConfigForVPCAttachment(vpc galacticv1alpha.VPC, vpcAttachment galacticv1
 		}
 	}
 
-	vpcIdentifierBase62, err := baseconv.Convert(vpc.Status.Identifier, baseconv.DigitsHex, baseconv.Digits62)
+	vpcIdentifierBase62, err := util.HexToBase62(vpc.Status.Identifier)
 	if err != nil {
 		return NetConfList{}, err
 	}
-	vpcAttachmentIdentifierBase62, err := baseconv.Convert(vpcAttachment.Status.Identifier, baseconv.DigitsHex, baseconv.Digits62)
+	vpcAttachmentIdentifierBase62, err := util.HexToBase62(vpcAttachment.Status.Identifier)
 	if err != nil {
 		return NetConfList{}, err
 	}
