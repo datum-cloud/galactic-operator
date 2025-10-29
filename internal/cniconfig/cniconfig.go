@@ -6,6 +6,7 @@ import (
 
 	galacticv1alpha "github.com/datum-cloud/galactic-operator/api/v1alpha"
 
+	"github.com/datum-cloud/galactic-common/cni"
 	"github.com/datum-cloud/galactic-common/util"
 )
 
@@ -16,38 +17,18 @@ type NetConfList struct {
 }
 
 type PluginConfGalactic struct {
-	Type          string        `json:"type"`
-	VPC           string        `json:"vpc"`
-	VPCAttachment string        `json:"vpcattachment"`
-	MTU           int           `json:"mtu,omitempty"`
-	Terminations  []Termination `json:"terminations,omitempty"`
-	IPAM          IPAM          `json:"ipam,omitempty"`
-}
-
-type Termination struct {
-	Network string `json:"network"`
-	Via     string `json:"via,omitempty"`
-}
-
-type IPAM struct {
-	Type      string    `json:"type"`
-	Routes    []Route   `json:"routes,omitempty"`
-	Addresses []Address `json:"addresses,omitempty"`
-}
-
-type Route struct {
-	Dst string `json:"dst"`
-	GW  string `json:"gw,omitempty"`
-}
-
-type Address struct {
-	Address string `json:"address"`
+	Type          string            `json:"type"`
+	VPC           string            `json:"vpc"`
+	VPCAttachment string            `json:"vpcattachment"`
+	MTU           int               `json:"mtu,omitempty"`
+	Terminations  []cni.Termination `json:"terminations,omitempty"`
+	IPAM          cni.IPAM          `json:"ipam,omitempty"`
 }
 
 func CNIConfigForVPCAttachment(vpc galacticv1alpha.VPC, vpcAttachment galacticv1alpha.VPCAttachment) (NetConfList, error) {
-	terminations := make([]Termination, 0, 10)
-	addresses := make([]Address, 0, 10)
-	routes := make([]Route, 0, 10)
+	terminations := make([]cni.Termination, 0, 10)
+	addresses := make([]cni.Address, 0, 10)
+	routes := make([]cni.Route, 0, 10)
 
 	netAddresses := make([]net.IP, 0, 10) // to check if a route is local
 
@@ -57,8 +38,8 @@ func CNIConfigForVPCAttachment(vpc galacticv1alpha.VPC, vpcAttachment galacticv1
 			return NetConfList{}, err
 		}
 		netAddresses = append(netAddresses, netAddress)
-		addresses = append(addresses, Address{Address: address})
-		terminations = append(terminations, Termination{Network: network.String()})
+		addresses = append(addresses, cni.Address{Address: address})
+		terminations = append(terminations, cni.Termination{Network: network.String()})
 	}
 
 	for _, route := range vpcAttachment.Spec.Routes {
@@ -81,9 +62,9 @@ func CNIConfigForVPCAttachment(vpc galacticv1alpha.VPC, vpcAttachment galacticv1
 				}
 			}
 			if local { // local routes are terminations
-				terminations = append(terminations, Termination{Network: network.String(), Via: via.String()})
+				terminations = append(terminations, cni.Termination{Network: network.String(), Via: via.String()})
 			} else {
-				routes = append(routes, Route{Dst: network.String(), GW: via.String()})
+				routes = append(routes, cni.Route{Dst: network.String(), GW: via.String()})
 			}
 		}
 	}
@@ -107,7 +88,7 @@ func CNIConfigForVPCAttachment(vpc galacticv1alpha.VPC, vpcAttachment galacticv1
 				VPCAttachment: vpcAttachmentIdentifierBase62,
 				MTU:           1300,
 				Terminations:  terminations,
-				IPAM: IPAM{
+				IPAM: cni.IPAM{
 					Type:      "static",
 					Addresses: addresses,
 					Routes:    routes,
