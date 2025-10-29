@@ -3,7 +3,7 @@ module github.com/datum-cloud/galactic-operator
 go 1.24.9
 
 require (
-	github.com/datum-cloud/galactic-common v0.0.0-20251028201425-f06de7d6ad01
+	github.com/datum-cloud/galactic-common v0.0.0-20251029005442-b849af046af2
 	github.com/k8snetworkplumbingwg/network-attachment-definition-client v1.7.7
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.1

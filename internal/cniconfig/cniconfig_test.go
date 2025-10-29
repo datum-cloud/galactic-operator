@@ -9,6 +9,7 @@ import (
 
 	galacticv1alpha "github.com/datum-cloud/galactic-operator/api/v1alpha"
 
+	"github.com/datum-cloud/galactic-common/cni"
 	"github.com/datum-cloud/galactic-operator/internal/cniconfig"
 )
 
@@ -21,19 +22,19 @@ func TestCNIConfigForVPCAttachment(t *testing.T) {
 				VPC:           "1hVwxnaA7",
 				VPCAttachment: "h31",
 				MTU:           1300,
-				Terminations: []cniconfig.Termination{
+				Terminations: []cni.Termination{
 					{Network: "10.1.1.0/24"},
 					{Network: "2001:10:1:1::/64"},
 					{Network: "192.168.1.0/24", Via: "10.1.1.1"},
 					{Network: "2001:1::/64", Via: "2001:10:1:1::1"},
 				},
-				IPAM: cniconfig.IPAM{
+				IPAM: cni.IPAM{
 					Type: "static",
-					Addresses: []cniconfig.Address{
+					Addresses: []cni.Address{
 						{Address: "10.1.1.1/24"},
 						{Address: "2001:10:1:1::1/64"},
 					},
-					Routes: []cniconfig.Route{
+					Routes: []cni.Route{
 						{Dst: "192.168.2.0/24", GW: "10.1.1.2"},
 						{Dst: "2001:2::/64", GW: "2001:10:1:1::2"},
 					},
