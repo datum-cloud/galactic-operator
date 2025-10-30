@@ -18,7 +18,7 @@ func TestCNIConfigForVPCAttachment(t *testing.T) {
 		CNIVersion: "0.4.0",
 		Plugins: []interface{}{
 			cniconfig.PluginConfGalactic{
-				Type:          "galactic-cni",
+				Type:          "galactic",
 				VPC:           "1hVwxnaA7",
 				VPCAttachment: "h31",
 				MTU:           1300,

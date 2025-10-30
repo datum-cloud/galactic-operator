@@ -83,7 +83,7 @@ func CNIConfigForVPCAttachment(vpc galacticv1alpha.VPC, vpcAttachment galacticv1
 		CNIVersion: "0.4.0",
 		Plugins: []interface{}{
 			PluginConfGalactic{
-				Type:          "galactic-cni",
+				Type:          "galactic",
 				VPC:           vpcIdentifierBase62,
 				VPCAttachment: vpcAttachmentIdentifierBase62,
 				MTU:           1300,
