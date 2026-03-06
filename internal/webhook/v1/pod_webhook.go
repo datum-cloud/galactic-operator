@@ -55,9 +55,11 @@ func (d *PodCustomDefaulter) Default(ctx context.Context, obj runtime.Object) er
 		return nil
 	}
 
-	if vpcAttachment, _ := vpcAttachmentByName(d.Client, ctx, pod.Annotations[galacticv1alpha.VPCAttachmentAnnotation], pod.GetNamespace()); vpcAttachment != nil {
-		pod.Annotations[PodAnnotationMultusNetworks] = fmt.Sprintf("%s@%s", vpcAttachment.Name, vpcAttachment.Spec.Interface.Name)
+	vpcAttachment, err := vpcAttachmentByName(d.Client, ctx, pod.Annotations[galacticv1alpha.VPCAttachmentAnnotation], pod.GetNamespace())
+	if err != nil {
+		return err
 	}
+	pod.Annotations[PodAnnotationMultusNetworks] = fmt.Sprintf("%s@%s", vpcAttachment.Name, vpcAttachment.Spec.Interface.Name)
 
 	return nil
 }
@@ -114,6 +116,9 @@ func vpcAttachmentByName(k8sClient client.Client, ctx context.Context, name, nam
 	var vpcAttachment galacticv1alpha.VPCAttachment
 	if err := k8sClient.Get(ctx, typeNamespacedName, &vpcAttachment); err != nil {
 		return nil, err
+	}
+	if !vpcAttachment.Status.Ready {
+		return nil, fmt.Errorf("VPCAttachment %s/%s is not ready", namespace, name)
 	}
 	return &vpcAttachment, nil
 }

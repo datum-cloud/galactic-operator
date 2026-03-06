@@ -70,8 +70,6 @@ func (r *VPCAttachmentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			vpcAttachment.Status.Identifier, _ = r.Identifier.ForVPCAttachment()
 		}
 
-		vpcAttachment.Status.Ready = true
-
 		if err := r.Status().Update(ctx, &vpcAttachment); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -101,6 +99,13 @@ func (r *VPCAttachmentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	})
 	if err != nil {
 		return ctrl.Result{}, err
+	}
+
+	if !vpcAttachment.Status.Ready {
+		vpcAttachment.Status.Ready = true
+		if err := r.Status().Update(ctx, &vpcAttachment); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	return ctrl.Result{}, nil
