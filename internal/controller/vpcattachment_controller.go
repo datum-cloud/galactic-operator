@@ -28,6 +28,7 @@ type VPCAttachmentReconciler struct {
 	client.Client
 	Scheme     *runtime.Scheme
 	Identifier *identifier.Identifier
+	MTU        int
 }
 
 // +kubebuilder:rbac:groups=galactic.datumapis.com,resources=vpcattachments,verbs=get;list;watch;create;update;patch;delete
@@ -82,7 +83,7 @@ func (r *VPCAttachmentReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		},
 	}
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, nad, func() error {
-		cniPluginConfig, err := cniconfig.CNIConfigForVPCAttachment(vpc, vpcAttachment)
+		cniPluginConfig, err := cniconfig.CNIConfigForVPCAttachment(vpc, vpcAttachment, r.MTU)
 		if err != nil {
 			return err
 		}

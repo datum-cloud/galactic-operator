@@ -25,7 +25,7 @@ type PluginConfGalactic struct {
 	IPAM          cni.IPAM          `json:"ipam,omitempty"`
 }
 
-func CNIConfigForVPCAttachment(vpc galacticv1alpha.VPC, vpcAttachment galacticv1alpha.VPCAttachment) (NetConfList, error) {
+func CNIConfigForVPCAttachment(vpc galacticv1alpha.VPC, vpcAttachment galacticv1alpha.VPCAttachment, mtu int) (NetConfList, error) {
 	terminations := make([]cni.Termination, 0, 10)
 	addresses := make([]cni.Address, 0, 10)
 	routes := make([]cni.Route, 0, 10)
@@ -85,7 +85,7 @@ func CNIConfigForVPCAttachment(vpc galacticv1alpha.VPC, vpcAttachment galacticv1
 				Type:          "galactic",
 				VPC:           vpcIdentifierBase62,
 				VPCAttachment: vpcAttachmentIdentifierBase62,
-				MTU:           1300,
+				MTU:           mtu,
 				Terminations:  terminations,
 				IPAM: cni.IPAM{
 					Type:      "static",
