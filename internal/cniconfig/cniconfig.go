@@ -78,7 +78,6 @@ func CNIConfigForVPCAttachment(vpc galacticv1alpha.VPC, vpcAttachment galacticv1
 		return NetConfList{}, err
 	}
 
-	// TODO Change to use VPC & VPCAttachment identifiers once CNI is adjusted
 	return NetConfList{
 		CNIVersion: "0.4.0",
 		Plugins: []interface{}{
