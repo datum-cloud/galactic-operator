@@ -1,0 +1,5 @@
+resources:
+  - vpc.yaml
+  - attachment-1.yaml
+  - attachment-2.yaml
+  - attachment-3.yaml

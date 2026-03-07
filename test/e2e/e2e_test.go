@@ -22,11 +22,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/datum-cloud/galactic-common/util"
+	"github.com/datum-cloud/galactic-operator/internal/identifier"
 	"github.com/datum-cloud/galactic-operator/test/utils"
 )
 
@@ -305,6 +309,227 @@ var _ = Describe("Manager", Ordered, func() {
 		//    fmt.Sprintf(`controller_runtime_reconcile_total{controller="%s",result="success"} 1`,
 		//    strings.ToLower(<Kind>),
 		// ))
+	})
+
+	Context("Full Deployment", func() {
+		const testNamespace = "galactic-e2e-test"
+
+		type testCase struct {
+			name          string
+			interfaceName string
+		}
+
+		attachments := []testCase{
+			{name: "attachment-1", interfaceName: "net0"},
+			{name: "attachment-2", interfaceName: "net0"},
+			{name: "attachment-3", interfaceName: "net0"},
+		}
+
+		BeforeAll(func() {
+			By("creating the test namespace")
+			cmd := exec.Command("kubectl", "create", "ns", testNamespace)
+			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to create test namespace")
+		})
+
+		AfterAll(func() {
+			By("cleaning up the test namespace")
+			cmd := exec.Command("kubectl", "delete", "ns", testNamespace, "--ignore-not-found")
+			_, _ = utils.Run(cmd)
+		})
+
+		It("should apply the kustomize bundle and ensure all resources are correctly created", func() {
+			By("applying the kustomize bundle (VPC, VPCAttachments and Deployments simultaneously)")
+			cmd := exec.Command("kubectl", "apply", "-k", "test/e2e/testdata/", "-n", testNamespace)
+			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to apply kustomize bundle")
+
+			By("verifying the VPC is ready and has an identifier")
+			verifyVPCReady := func(g Gomega) {
+				cmd := exec.Command("kubectl", "get", "vpc", "main",
+					"-n", testNamespace,
+					"-o", "jsonpath={.status.ready}")
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(output).To(Equal("true"), "VPC should be ready")
+
+				cmd = exec.Command("kubectl", "get", "vpc", "main",
+					"-n", testNamespace,
+					"-o", "jsonpath={.status.identifier}")
+				output, err = utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(output).NotTo(BeEmpty(), "VPC identifier should be set")
+				g.Expect(output).To(HaveLen(12), "VPC identifier should be 12 characters")
+				vpcID, parseErr := strconv.ParseUint(output, 16, 64)
+				g.Expect(parseErr).NotTo(HaveOccurred(), "VPC identifier should be valid hex")
+				g.Expect(vpcID).To(BeNumerically(">", 0), "VPC identifier should be greater than 0")
+				g.Expect(vpcID).To(BeNumerically("<", identifier.MaxVPC), "VPC identifier should be less than max")
+			}
+			Eventually(verifyVPCReady, 2*time.Minute, 5*time.Second).Should(Succeed())
+
+			for _, tc := range attachments {
+				By(fmt.Sprintf("verifying VPCAttachment %s is ready and has an identifier", tc.name))
+				verifyAttachmentReady := func(g Gomega) {
+					cmd := exec.Command("kubectl", "get", "vpcattachment", tc.name,
+						"-n", testNamespace,
+						"-o", "jsonpath={.status.ready}")
+					output, err := utils.Run(cmd)
+					g.Expect(err).NotTo(HaveOccurred())
+					g.Expect(output).To(Equal("true"), fmt.Sprintf("VPCAttachment %s should be ready", tc.name))
+
+					cmd = exec.Command("kubectl", "get", "vpcattachment", tc.name,
+						"-n", testNamespace,
+						"-o", "jsonpath={.status.identifier}")
+					output, err = utils.Run(cmd)
+					g.Expect(err).NotTo(HaveOccurred())
+					g.Expect(output).NotTo(BeEmpty(), fmt.Sprintf("VPCAttachment %s identifier should be set", tc.name))
+					g.Expect(output).To(HaveLen(4), fmt.Sprintf("VPCAttachment %s identifier should be 4 characters", tc.name))
+					attachmentID, parseErr := strconv.ParseUint(output, 16, 64)
+					g.Expect(parseErr).NotTo(HaveOccurred(), fmt.Sprintf("VPCAttachment %s identifier should be valid hex", tc.name))
+					g.Expect(attachmentID).To(BeNumerically(">", 0),
+						fmt.Sprintf("VPCAttachment %s identifier should be greater than 0", tc.name))
+					g.Expect(attachmentID).To(BeNumerically("<", identifier.MaxVPCAttachment),
+						fmt.Sprintf("VPCAttachment %s identifier should be less than max", tc.name))
+				}
+				Eventually(verifyAttachmentReady, 2*time.Minute, 5*time.Second).Should(Succeed())
+			}
+
+			for _, tc := range attachments {
+				By(fmt.Sprintf("verifying NetworkAttachmentDefinition %s is created with correct CNI config", tc.name))
+				verifyNAD := func(g Gomega) {
+					// Get the VPC identifier and convert to base62
+					cmd := exec.Command("kubectl", "get", "vpc", "main",
+						"-n", testNamespace,
+						"-o", "jsonpath={.status.identifier}")
+					vpcHexID, err := utils.Run(cmd)
+					g.Expect(err).NotTo(HaveOccurred())
+					vpcBase62, err := util.HexToBase62(vpcHexID)
+					g.Expect(err).NotTo(HaveOccurred(), "VPC identifier should convert to base62")
+
+					// Get the VPCAttachment identifier and convert to base62
+					cmd = exec.Command("kubectl", "get", "vpcattachment", tc.name,
+						"-n", testNamespace,
+						"-o", "jsonpath={.status.identifier}")
+					attachmentHexID, err := utils.Run(cmd)
+					g.Expect(err).NotTo(HaveOccurred())
+					attachmentBase62, err := util.HexToBase62(attachmentHexID)
+					g.Expect(err).NotTo(HaveOccurred(), "VPCAttachment identifier should convert to base62")
+
+					// Get the NAD config
+					cmd = exec.Command("kubectl", "get", "network-attachment-definition", tc.name,
+						"-n", testNamespace,
+						"-o", "jsonpath={.spec.config}")
+					output, err := utils.Run(cmd)
+					g.Expect(err).NotTo(HaveOccurred(),
+						fmt.Sprintf("NetworkAttachmentDefinition %s should exist", tc.name))
+					g.Expect(output).NotTo(BeEmpty(),
+						fmt.Sprintf("NetworkAttachmentDefinition %s should have a config", tc.name))
+
+					g.Expect(output).To(ContainSubstring(`"cniVersion":"0.4.0"`),
+						"CNI config should have cniVersion 0.4.0")
+					g.Expect(output).To(ContainSubstring(`"type":"galactic"`),
+						"CNI config should use the galactic plugin")
+					g.Expect(output).To(ContainSubstring(`"mtu":1300`),
+						"CNI config should set MTU to 1300")
+					g.Expect(output).To(ContainSubstring(`"type":"static"`),
+						"CNI config IPAM should be static")
+
+					// Verify the base62-encoded identifiers match
+					g.Expect(output).To(ContainSubstring(fmt.Sprintf(`"vpc":"%s"`, vpcBase62)),
+						"CNI config VPC identifier should match base62-encoded VPC status identifier")
+					g.Expect(output).To(ContainSubstring(fmt.Sprintf(`"vpcattachment":"%s"`, attachmentBase62)),
+						"CNI config VPCAttachment identifier should match base62-encoded VPCAttachment status identifier")
+				}
+				Eventually(verifyNAD, 2*time.Minute, 5*time.Second).Should(Succeed())
+			}
+
+			for _, tc := range attachments {
+				By(fmt.Sprintf("waiting for %s deployment to have ready pods", tc.name))
+				verifyDeploymentReady := func(g Gomega) {
+					cmd := exec.Command("kubectl", "get", "deployment", tc.name,
+						"-n", testNamespace,
+						"-o", "jsonpath={.status.readyReplicas}")
+					output, err := utils.Run(cmd)
+					g.Expect(err).NotTo(HaveOccurred())
+					g.Expect(output).To(Equal("1"), fmt.Sprintf("deployment %s should have 1 ready replica", tc.name))
+				}
+				Eventually(verifyDeploymentReady, 5*time.Minute, 5*time.Second).Should(Succeed())
+
+				By(fmt.Sprintf("verifying %s pods have the Multus network annotation", tc.name))
+				verifyMultusAnnotation := func(g Gomega) {
+					cmd := exec.Command("kubectl", "get", "pods",
+						"-l", fmt.Sprintf("app.kubernetes.io/name=%s", tc.name),
+						"-n", testNamespace,
+						"-o", `jsonpath={.items[0].metadata.annotations.k8s\.v1\.cni\.cncf\.io/networks}`)
+					output, err := utils.Run(cmd)
+					g.Expect(err).NotTo(HaveOccurred())
+					expectedAnnotation := fmt.Sprintf("%s@%s", tc.name, tc.interfaceName)
+					g.Expect(output).To(Equal(expectedAnnotation),
+						fmt.Sprintf("pod for %s should have Multus annotation %q, got %q", tc.name, expectedAnnotation, output))
+				}
+				Eventually(verifyMultusAnnotation, 2*time.Minute, 5*time.Second).Should(Succeed())
+			}
+		})
+
+		It("should reject pods when VPCAttachment does not exist", func() {
+			By("creating a deployment referencing a non-existent VPCAttachment")
+			cmd := exec.Command("kubectl", "apply", "-n", testNamespace, "-f", "-")
+			cmd.Stdin = strings.NewReader(`
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: missing-attachment
+  labels:
+    app.kubernetes.io/name: missing-attachment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: missing-attachment
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: missing-attachment
+      annotations:
+        k8s.v1alpha.galactic.datumapis.com/vpc-attachment: does-not-exist
+    spec:
+      containers:
+      - name: main-container
+        image: alpine
+        command: ["/bin/ash", "-c", "sleep infinity"]
+`)
+			_, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred(), "Failed to create missing-attachment deployment")
+
+			By("verifying that pods fail to be created (webhook should reject)")
+			// Give the deployment controller time to attempt pod creation
+			verifyPodsRejected := func(g Gomega) {
+				// Check that no pods are running for this deployment
+				cmd := exec.Command("kubectl", "get", "pods",
+					"-l", "app.kubernetes.io/name=missing-attachment",
+					"-n", testNamespace,
+					"-o", "jsonpath={.items}")
+				output, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(output).To(Equal("[]"), "no pods should be running for missing-attachment")
+
+				// Check ReplicaSet events for webhook rejection
+				cmd = exec.Command("kubectl", "get", "events",
+					"-n", testNamespace,
+					"--field-selector", "reason=FailedCreate",
+					"-o", "jsonpath={.items[*].message}")
+				output, err = utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(output).To(ContainSubstring("does-not-exist"),
+					"should see webhook rejection event referencing the missing VPCAttachment")
+			}
+			Eventually(verifyPodsRejected, 2*time.Minute, 5*time.Second).Should(Succeed())
+
+			By("cleaning up the missing-attachment deployment")
+			cmd = exec.Command("kubectl", "delete", "deployment", "missing-attachment",
+				"-n", testNamespace, "--ignore-not-found")
+			_, _ = utils.Run(cmd)
+		})
 	})
 })
 
