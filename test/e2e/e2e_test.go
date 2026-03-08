@@ -429,8 +429,8 @@ var _ = Describe("Manager", Ordered, func() {
 						"CNI config should have cniVersion 0.4.0")
 					g.Expect(output).To(ContainSubstring(`"type":"galactic"`),
 						"CNI config should use the galactic plugin")
-					g.Expect(output).To(ContainSubstring(`"mtu":1300`),
-						"CNI config should set MTU to 1300")
+					g.Expect(output).To(ContainSubstring(`"mtu":1372`),
+						"CNI config should set MTU to 1372")
 					g.Expect(output).To(ContainSubstring(`"type":"static"`),
 						"CNI config IPAM should be static")
 

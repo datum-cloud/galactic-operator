@@ -21,7 +21,7 @@ func TestCNIConfigForVPCAttachment(t *testing.T) {
 				Type:          "galactic",
 				VPC:           "1hVwxnaA7",
 				VPCAttachment: "h31",
-				MTU:           1300,
+				MTU:           1372,
 				Terminations: []cni.Termination{
 					{Network: "10.1.1.0/24"},
 					{Network: "2001:10:1:1::/64"},
@@ -90,7 +90,7 @@ func TestCNIConfigForVPCAttachment(t *testing.T) {
 			Identifier: "ffff",
 		},
 	}
-	actual, err := cniconfig.CNIConfigForVPCAttachment(vpc, vpcAttachment)
+	actual, err := cniconfig.CNIConfigForVPCAttachment(vpc, vpcAttachment, 1372)
 	if err != nil {
 		t.Errorf("CNIConfigForVPCAttachment error: %+v", err)
 	}
